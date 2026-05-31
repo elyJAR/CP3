@@ -15,6 +15,7 @@ using System.Collections;
 using System.ComponentModel;
 using System.Windows.Forms;
 using System.Runtime.Serialization.Formatters.Binary;
+using System.Runtime.Serialization;
 using System.Diagnostics;
 using System.Runtime.InteropServices;
 using System.Collections.Generic;
@@ -864,10 +865,19 @@ namespace UW.ClassroomPresenter.Decks {
             FileStream fs = file.Open(FileMode.Open, FileAccess.Read);
 
             try {
-                BinaryFormatter bf = new BinaryFormatter();
-                DeckModel toReturn = (DeckModel)bf.Deserialize(fs);
-                toReturn.Filename = file.FullName;
-                return toReturn;
+                try {
+                    NetDataContractSerializer ndcs = new NetDataContractSerializer();
+                    DeckModel toReturn = (DeckModel)ndcs.Deserialize(fs);
+                    toReturn.Filename = file.FullName;
+                    return toReturn;
+                } catch (Exception) {
+                    // Fallback to legacy BinaryFormatter for backward compatibility
+                    fs.Position = 0;
+                    BinaryFormatter bf = new BinaryFormatter();
+                    DeckModel toReturn = (DeckModel)bf.Deserialize(fs);
+                    toReturn.Filename = file.FullName;
+                    return toReturn;
+                }
             } finally {
                 fs.Close();
             }
@@ -892,8 +902,8 @@ namespace UW.ClassroomPresenter.Decks {
             //Serialize it
             FileStream fs = file.Open(FileMode.Create, FileAccess.Write);
             try {
-                BinaryFormatter bf = new BinaryFormatter();
-                bf.Serialize(fs, deck);
+                NetDataContractSerializer ndcs = new NetDataContractSerializer();
+                ndcs.Serialize(fs, deck);
                 fs.Flush();
             } finally {
                 fs.Close();
